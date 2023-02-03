@@ -1,0 +1,34 @@
+version: '3.2'
+services:
+
+  rtl_tcp:
+#    build: https://github.com/rhodey/librtlsdr-docker.git
+    build: https://github.com/omnidynmc/rtl-sdr-docker.git
+    container_name: rtl_tcp
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    restart: unless-stopped
+    command: rtl_tcp -a 0.0.0.0
+
+  metermon:
+    build: .
+    container_name: metermon
+    depends_on:
+      - rtl_tcp
+    environment:
+      - MQTT_BROKER_HOST=10.0.10.6
+      - MQTT_BROKER_PORT=1883
+      - MQTT_CLIENT_ID=metermon
+      #- MQTT_USERNAME=user
+      #- MQTT_PASSWORD=pass
+#      - MQTT_TOPIC_PREFIX=metermon/output
+      - RTL_TCP_SERVER=rtl_tcp:1234
+      - RTLAMR_MSGTYPE=scm+
+      - RTLAMR_FILTERID=101890266
+      #- RTLAMR_SYMBOLLENGTH=72
+      - RTLAMR_UNIQUE=true
+      - METERMON_SEND_RAW=true
+      - METERMON_SEND_BY_ID=true
+      - METERMON_ELECTRIC_DIVISOR=1000.0
+      #- METERMON_WATER_DIVISOR=10.0
+    restart: unless-stopped
