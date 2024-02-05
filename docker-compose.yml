@@ -8,6 +8,8 @@ services:
     devices:
       - /dev/bus/usb:/dev/bus/usb
     restart: unless-stopped
+    ports:
+      - 1234:1234
     command: rtl_tcp -a 0.0.0.0
 
   metermon:
@@ -24,11 +26,13 @@ services:
 #      - MQTT_TOPIC_PREFIX=metermon/output
       - RTL_TCP_SERVER=rtl_tcp:1234
       - RTLAMR_MSGTYPE=scm+
-      - RTLAMR_FILTERID=101890266
+      #- RTLAMR_FILTERID=101890266
       #- RTLAMR_SYMBOLLENGTH=72
+      #- RTLAMR_CENTERFREQ=912750000
       - RTLAMR_UNIQUE=true
       - METERMON_SEND_RAW=true
       - METERMON_SEND_BY_ID=true
       - METERMON_ELECTRIC_DIVISOR=1000.0
+      - METERMON_FILTER_ID=101890266
       #- METERMON_WATER_DIVISOR=10.0
     restart: unless-stopped

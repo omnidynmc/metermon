@@ -16,11 +16,13 @@ MQTT_TOPIC_PREFIX = os.getenv('MQTT_TOPIC_PREFIX',"metermon")
 RTL_TCP_SERVER    = os.getenv('RTL_TCP_SERVER',"127.0.0.1:1234")
 RTLAMR_MSGTYPE    = os.getenv('RTLAMR_MSGTYPE',"all")
 RTLAMR_UNIQUE     = os.getenv('RTLAMR_UNIQUE',"true")
+RTLAMR_CENTERFREQ = os.getenv('RTLAMR_CENTERFREQ', "912600155")
 METERMON_SEND_RAW = os.getenv('METERMON_SEND_RAW',"False")
 METERMON_SEND_BY_ID = os.getenv('METERMON_SEND_BY_ID', "False")
 METERMON_ELECTRIC_DIVISOR = float(os.getenv('METERMON_ELECTRIC_DIVISOR',100.0))
 #METERMON_GAS_DIVISOR = float(os.getenv('METERMON_GAS_DIVISOR', 1.0))
 METERMON_WATER_DIVISOR = float(os.getenv('METERMON_WATER_DIVISOR', 10.0))
+METERMON_FILTER_ID     = os.getenv('METERMON_FILTER_ID',"")
 
 R900_LOOKUP = {
     "HISTORY": {
@@ -57,6 +59,10 @@ def on_disconnect(client, userdata, rc):
     if rc != 0:
         print(f"Unexpected disconnection from broker (RC={rc}). Attempting to reconnect...")
 
+print("Sleeping to let RTL start up")
+time.sleep(30)
+print("done sleeping...")
+
 # set up mqtt client
 client = mqtt.Client(client_id=MQTT_CLIENT_ID)
 if MQTT_USERNAME and MQTT_PASSWORD:
@@ -74,6 +80,7 @@ client.loop_start()
 cmdargs = [
     'rtlamr',
     '-format=json',
+    f'-centerfreq={RTLAMR_CENTERFREQ}',
     f'-server={RTL_TCP_SERVER}',
     f'-msgtype={RTLAMR_MSGTYPE}',
     f'-unique={RTLAMR_UNIQUE}',
@@ -87,6 +94,7 @@ while True:
     if not line:
         break
     data=json.loads(line)
+    print(json.dumps(data)) # also print
     msg=json.loads('{"Protocol":"Unknown","Type":"Unknown","ID":"Unknown","Consumption":0,"Unit":"Unknown"}')
 
     # read data, create json objects, and publish MQTT message for every meter message received
@@ -158,9 +166,11 @@ while True:
         msg['Unit'] = "gal"
     # filter out cases where consumption value is negative        
     if msg['Consumption'] > 0:        
-        client.publish(MQTT_TOPIC_PREFIX+"/output",json.dumps(msg)) # publish
-        if METERMON_SEND_BY_ID.lower() == "true":
-            client.publish(MQTT_TOPIC_PREFIX+"/"+msg['ID'],json.dumps(msg)) # also publish by ID if enabled
+        if METERMON_FILTER_ID == msg['ID'] or METERMON_FILTER_ID == "":
+          print("Found packet matching: " + METERMON_FILTER_ID)
+          client.publish(MQTT_TOPIC_PREFIX+"/output",json.dumps(msg)) # publish
+          if METERMON_SEND_BY_ID.lower() == "true":
+              client.publish(MQTT_TOPIC_PREFIX+"/"+msg['ID'],json.dumps(msg)) # also publish by ID if enabled
         print(json.dumps(msg)) # also print
     # send raw json message if enabled
     if METERMON_SEND_RAW.lower() == "true":
